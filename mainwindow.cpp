@@ -1,8 +1,14 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-int opt=0;
-int from_edit=0;
+
+#include <QPushButton>
+static int opt=0;
+static int from_edit=0;
 static QString array[72]={""};
+static int array_len=0;
+static int timer_val=0;
+static int sub_time_loop=0;
+static int into_pname=0;
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -37,6 +43,19 @@ MainWindow::MainWindow(QWidget *parent) :
         ui->listWidget->addItem(query.value(0).toString());
         //i++;
     }
+    int fd = wiringPiI2CSetup(DEVICE_ID);
+    qDebug()<<fd<<DEVICE_ID;
+    if (fd == -1) {
+        qDebug() << "Failed to init I2C communication.\n";
+        //return -1;
+    }
+    //qDebug() << "I2C communication successfully setup.\n";
+
+    timer = new QTimer(this);
+    connect(timer, SIGNAL(timeout()), this,SLOT(testing()));
+    timer1 = new QTimer(this);
+    connect(timer1, SIGNAL(timeout()), this,SLOT(realtime_temperature()));
+    //timer1->start(1000);
 }
 
 MainWindow::~MainWindow()
@@ -461,7 +480,7 @@ void MainWindow::on_toolButton_6_clicked()
     while(query.next())
     {
         processname1=query.value(0).toString();
-        pos1=query.value(1).toInt()-1;
+        pos1=query.value(1).toInt();
         wait1=query.value(2).toInt();
         mix1=query.value(3).toInt();
         mag1=query.value(4).toInt();
@@ -478,7 +497,7 @@ void MainWindow::on_toolButton_6_clicked()
     while(query.next())
     {
         processname2=query.value(0).toString();
-        pos2=query.value(1).toInt()-1;
+        pos2=query.value(1).toInt();
         wait2=query.value(2).toInt();
         mix2=query.value(3).toInt();
         mag2=query.value(4).toInt();
@@ -495,7 +514,7 @@ void MainWindow::on_toolButton_6_clicked()
     while(query.next())
     {
         processname3=query.value(0).toString();
-        pos3=query.value(1).toInt()-1;
+        pos3=query.value(1).toInt();
         wait3=query.value(2).toInt();
         mix3=query.value(3).toInt();
         mag3=query.value(4).toInt();
@@ -512,7 +531,7 @@ void MainWindow::on_toolButton_6_clicked()
     while(query.next())
     {
         processname4=query.value(0).toString();
-        pos4=query.value(1).toInt()-1;
+        pos4=query.value(1).toInt();
         wait4=query.value(2).toInt();
         mix4=query.value(3).toInt();
         mag4=query.value(4).toInt();
@@ -529,7 +548,7 @@ void MainWindow::on_toolButton_6_clicked()
     while(query.next())
     {
         processname5=query.value(0).toString();
-        pos5=query.value(1).toInt()-1;
+        pos5=query.value(1).toInt();
         wait5=query.value(2).toInt();
         mix5=query.value(3).toInt();
         mag5=query.value(4).toInt();
@@ -546,7 +565,7 @@ void MainWindow::on_toolButton_6_clicked()
     while(query.next())
     {
         processname6=query.value(0).toString();
-        pos6=query.value(1).toInt()-1;
+        pos6=query.value(1).toInt();
         wait6=query.value(2).toInt();
         mix6=query.value(3).toInt();
         mag6=query.value(4).toInt();
@@ -563,7 +582,7 @@ void MainWindow::on_toolButton_6_clicked()
     while(query.next())
     {
         processname7=query.value(0).toString();
-        pos7=query.value(1).toInt()-1;
+        pos7=query.value(1).toInt();
         wait7=query.value(2).toInt();
         mix7=query.value(3).toInt();
         mag7=query.value(4).toInt();
@@ -606,7 +625,10 @@ void MainWindow::on_toolButton_6_clicked()
     s = QString::number(wait1);
     array[7]="idl "+s;
     s = QString::number(mix1);
-    array[8]="mix "+s+" 1";
+    if(vol1>=150)
+        array[8]="mix "+s+" 1";
+    else
+        array[8]="mis "+s+" 1";
     array[9]="mmf 1";
     s = QString::number(mag1);
     array[10]="idl "+s;
@@ -639,7 +661,10 @@ void MainWindow::on_toolButton_6_clicked()
     s = QString::number(wait2);
     array[17]="idl "+s;
     s = QString::number(mix2);
-    array[18]="mix "+s+" 1";
+    if(vol2>=150)
+        array[18]="mix "+s+" 1";
+    else
+        array[18]="mis "+s+" 1";
     array[19]="mmf 1";
     s = QString::number(mag2);
     array[20]="idl "+s;
@@ -673,7 +698,10 @@ void MainWindow::on_toolButton_6_clicked()
     s = QString::number(wait3);
     array[27]="idl "+s;
     s = QString::number(mix3);
-    array[28]="mix "+s+" 1";
+    if(vol3>=150)
+        array[28]="mix "+s+" 1";
+    else
+        array[28]="mis "+s+" 1";
     array[29]="mmf 1";
     s = QString::number(mag3);
     array[30]="idl "+s;
@@ -707,7 +735,10 @@ void MainWindow::on_toolButton_6_clicked()
     s = QString::number(wait4);
     array[37]="idl "+s;
     s = QString::number(mix4);
-    array[38]="mix "+s+" 1";
+    if(vol4>=150)
+        array[38]="mix "+s+" 1";
+    else
+        array[38]="mis "+s+" 1";
     array[39]="mmf 1";
     s = QString::number(mag4);
     array[40]="idl "+s;
@@ -741,8 +772,10 @@ void MainWindow::on_toolButton_6_clicked()
     s = QString::number(wait5);
     array[47]="idl "+s;
     s = QString::number(mix5);
-    array[48]="mix "+s+" 1";
-    array[49]="mmf 1";
+    if(vol5>=150)
+        array[48]="mix "+s+" 1";
+    else
+        array[48]="mis "+s+" 1";    array[49]="mmf 1";
     s = QString::number(mag5);
     array[50]="idl "+s;
     array[51]="msb 1";
@@ -775,7 +808,10 @@ void MainWindow::on_toolButton_6_clicked()
     s = QString::number(wait6);
     array[57]="idl "+s;
     s = QString::number(mix6);
-    array[58]="mix "+s+" 1";
+    if(vol6>=150)
+        array[58]="mix "+s+" 1";
+    else
+        array[58]="mis "+s+" 1";
     array[59]="mmf 1";
     s = QString::number(mag6);
     array[60]="idl "+s;
@@ -810,7 +846,10 @@ void MainWindow::on_toolButton_6_clicked()
     s = QString::number(wait7);
     array[67]="idl "+s;
     s = QString::number(mix7);
-    array[68]="mix "+s+" 1";
+    if(vol7>=150)
+        array[68]="mix "+s+" 1";
+    else
+        array[68]="mis "+s+" 1";
     array[69]="mmf 1";
     s = QString::number(mag7);
     array[70]="idl "+s;
@@ -819,9 +858,29 @@ void MainWindow::on_toolButton_6_clicked()
     for(int i=0;i<72;i++)
     {
         qDebug()<<array[i];
+        if(array[i]=="")
+        {
+            array_len=i;
+            break;
+        }
+    }
+    array[0]="P"+array[0];
+    for(int i=12;i<array_len;i+=10)
+    {
+        array[i]="P"+array[i];
+    }
+    array[array_len-3]="mhmm";
+    array[array_len-2]="shm";
+    array[array_len-1]="bhm";
+    array[array_len]="buz 5";
+    for(int i=0;i<=array_len;i++)
+    {
+        qDebug()<<array[i];
     }
     ui->label_91->setText(name);
-    ui->label_14->setText(processname1);
+    timer1->start(1000);
+    sub_time_loop=1;
+    processing();
 
 }
 
@@ -1995,3 +2054,204 @@ void MainWindow::on_toolButton_4_clicked()
     ui->stackedWidget->setCurrentIndex(2);
 
 }
+
+void MainWindow::realtime_temperature()
+{
+    Pi2c arduino(8); //Create a new object "arduino" using address "0x07"
+    char receive[30]; //Create a buffer of char (single bytes) for the data
+    //Receive from the Arduino and put the contents into the "receive" char array
+    //timer1->stop();
+    QThread::msleep(100);
+    arduino.i2cRead(receive,30);
+    QThread::msleep(100);
+    //timer1->start(1000);
+    qDebug()<<receive;
+    QString str=receive;
+    //Print out what the Arduino is sending...
+    //qDebug() << "Arduino Says: " << str.mid(0,2);
+    ui->lineEdit_48->setText(str.mid(0,2));
+    ui->lineEdit_49->setText(str.mid(3,2));
+    ui->lineEdit_92->setText(str.mid(6,2));
+    ui->lineEdit_93->setText(str.mid(9,2));
+    ui->lineEdit_140->setText(str.mid(12,2));
+    ui->lineEdit_141->setText(str.mid(15,2));
+    ui->lineEdit_142->setText(str.mid(18,2));
+    ui->lineEdit_143->setText(str.mid(21,2));
+
+
+    //Send an 16 bit integer
+}
+
+void MainWindow::processing()
+{
+    timer_val=1;
+    if(array[0][0]=='P')
+    {
+        array[0].remove(0,1);
+        ui->label_14->setText(array[0]);
+        QString name;
+        name=ui->listWidget->currentItem()->text();
+        QSqlQuery query;
+        if(sub_time_loop==1)
+            query.prepare("select wait1,mix1,mag1 FROM DNA where name=:name");
+        else if(sub_time_loop==2)
+            query.prepare("select wait2,mix2,mag2 FROM DNA where name=:name");
+        else if(sub_time_loop==3)
+            query.prepare("select wait3,mix3,mag3 FROM DNA where name=:name");
+        else if(sub_time_loop==4)
+            query.prepare("select wait4,mix4,mag4 FROM DNA where name=:name");
+        else if(sub_time_loop==5)
+            query.prepare("select wait5,mix5,mag5 FROM DNA where name=:name");
+        else if(sub_time_loop==7)
+            query.prepare("select wait6,mix6,mag7 FROM DNA where name=:name");
+        else if(sub_time_loop==7)
+            query.prepare("select wait7,mix7,mag7 FROM DNA where name=:name");
+        query.bindValue(":name",name);
+        query.exec();
+        while(query.next())
+        {
+            ui->lineEdit_146->setText(query.value(0).toString());
+            ui->lineEdit_147->setText(query.value(1).toString());
+            ui->lineEdit_148->setText(query.value(2).toString());
+        }
+        sub_time_loop=sub_time_loop+1;
+        for(int i=0;i<array_len;i++)
+        {
+            array[i]=array[i+1];
+        }
+        array[array_len]='\0';
+        array_len=array_len-1;
+        //processing();
+        into_pname=1;
+
+    }
+
+    else if(array[0][0]=='W')
+    {
+        Pi2c arduino(8);
+        char* ch;
+        QByteArray ba=array[0].toLatin1();
+        ch=ba.data();
+        //timer1->stop();
+        QThread::msleep(100);
+        arduino.i2cWrite(ch,30);
+        QThread::msleep(100);
+        //timer1->start(1000);
+        qDebug()<<array[0];
+        for(int i=0;i<array_len;i++)
+        {
+            array[i]=array[i+1];
+        }
+        array[array_len]='\0';
+        array_len=array_len-1;
+        into_pname=1;
+    }
+
+    else
+    {
+        Pi2c arduino(7);
+        char* ch;
+        QByteArray ba=array[0].toLatin1();
+        ch=ba.data();
+        //timer1->stop();
+        QThread::msleep(100);
+        arduino.i2cWrite(ch,30);
+        QThread::msleep(100);
+        char rc[30];
+        arduino.i2cRead(rc,30);
+        qDebug()<<"sent="<<ch<<" received="<<rc;
+        QString str1=ch;
+        QString str2=rc;
+        qDebug()<<str1<<str2;
+
+        while(str1!=str2)
+        {
+            qDebug()<<"Command Mis Matched";
+            QThread::msleep(100);
+            arduino.i2cWrite(ch,30);
+            QThread::msleep(100);
+            arduino.i2cRead(rc,30);
+            QThread::msleep(100);
+            str1=ch;
+            str2=rc;
+            qDebug()<<str1<<str2;
+        }
+
+
+        qDebug()<<array[0];
+
+        //timer val
+        if(array[0].left(3)=="idl" || array[0].left(3)== "mix" || array[0].left(3)== "mis")
+        {
+            //timer_val=array[0].mid(4,4).toInt();
+            QStringList elements = array[0].split(' ');
+            //qDebug()<<elements[0]<<" "<<elements[1];
+            timer_val=elements[1].toInt();
+        }
+        else
+        {
+            timer_val=1;
+        }
+
+        for(int i=0;i<array_len;i++)
+        {
+            array[i]=array[i+1];
+        }
+        array[array_len]='\0';
+        array_len=array_len-1;
+    }
+    //qDebug()<<array_len;
+    //qDebug()<<timer_val;
+    if(array_len>=0)
+    {
+        timer->start(timer_val*1000);
+        //qDebug()<<timer_val*10;
+    }
+}
+
+
+void MainWindow::testing()
+{
+    if(into_pname==1)
+    {
+        into_pname=0;
+        processing();
+    }
+    else
+    {
+        Pi2c arduino(7);
+        char receive[30];
+        //char cmp[5]="done";
+        //while(strncmp(receive,"done",4)!=0)
+        //{
+        //timer1->stop();
+        QThread::msleep(100);
+        arduino.i2cRead(receive,30);
+        QThread::msleep(100);
+        //timer1->start(1000);
+
+        //QThread::msleep(500);
+        qDebug() << "Arduino Says: " << receive;
+        //qDebug()<<strncmp(receive,"done",4);
+
+        if(strncmp(receive,"done",4)==0)
+        {
+            timer->stop();
+            qDebug()<<"timer ended";
+            //call the same function back from here
+            if(array_len>=0)
+            {
+                processing();
+            }
+        }
+        else
+        {
+            timer->start(500);
+        }        
+        QThread::msleep(500);
+    }
+}
+
+//create a pause button
+//while resume check the sensor status
+//when door open this button goes to pause and need to resume through the button

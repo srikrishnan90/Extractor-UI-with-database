@@ -5,6 +5,13 @@
 #include <QtSql>
 #include <QSqlDatabase>
 #include <QMessageBox>
+#include <wiringPiI2C.h>
+#include <QDebug>
+#include "pi2c.h"
+#include <QThread>
+#include <QTimer>
+
+#define DEVICE_ID 0x18
 
 namespace Ui {
 class MainWindow;
@@ -311,8 +318,13 @@ private slots:
 
     void on_toolButton_4_clicked();
 
+    void realtime_temperature();
+    void testing();
+    void processing();
+
 private:
     Ui::MainWindow *ui;
+    QTimer *timer, *timer1;
 };
 
 #endif // MAINWINDOW_H
