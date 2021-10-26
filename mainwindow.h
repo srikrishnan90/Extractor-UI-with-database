@@ -321,10 +321,16 @@ private slots:
     void realtime_temperature();
     void testing();
     void processing();
+    void init_motor();
+    void init();
+
+    void on_toolButton_45_clicked();
+
+    void on_toolButton_46_clicked();
 
 private:
     Ui::MainWindow *ui;
-    QTimer *timer, *timer1;
+    QTimer *timer, *timer1, *timer2, *timer3;
 };
 
 #endif // MAINWINDOW_H

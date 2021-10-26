@@ -27,7 +27,9 @@ MainWindow::MainWindow(QWidget *parent) :
         // qDebug() << "Connected Successfully to DB !";
         ui->label_4->setText("DB Successful");
     }
-    ui->stackedWidget->setCurrentIndex(0);
+    ui->stackedWidget->setCurrentIndex(6);
+    ui->label_93->hide();
+    ui->label_94->hide();
     QSqlQuery query;
     //query.prepare("SELECT name FROM sqlite_master WHERE type='table'");
     query.prepare("SELECT name FROM DNA");
@@ -52,10 +54,15 @@ MainWindow::MainWindow(QWidget *parent) :
     //qDebug() << "I2C communication successfully setup.\n";
 
     timer = new QTimer(this);
-    connect(timer, SIGNAL(timeout()), this,SLOT(testing()));
     timer1 = new QTimer(this);
+    timer2 = new QTimer(this);
+    timer3 = new QTimer(this);
+    connect(timer, SIGNAL(timeout()), this,SLOT(testing()));
     connect(timer1, SIGNAL(timeout()), this,SLOT(realtime_temperature()));
-    //timer1->start(1000);
+    connect(timer2, SIGNAL(timeout()), this,SLOT(init_motor()));
+    connect(timer3, SIGNAL(timeout()), this,SLOT(init()));
+    timer2->start(1000);
+
 }
 
 MainWindow::~MainWindow()
@@ -2084,128 +2091,149 @@ void MainWindow::realtime_temperature()
 
 void MainWindow::processing()
 {
-    timer_val=1;
-    if(array[0][0]=='P')
+
+    Pi2c arduino(7);
+    char receive[30];
+    QString data="dss";
+    char* ch;
+    QByteArray ba=data.toLatin1();
+    ch=ba.data();
+    QThread::msleep(100);
+    arduino.i2cWrite(ch,30);
+    QThread::msleep(100);
+    arduino.i2cRead(receive,30);
+    QThread::msleep(100);
+    qDebug()<<receive;
+    if(strncmp(receive,"done",4)==0)
     {
-        array[0].remove(0,1);
-        ui->label_14->setText(array[0]);
-        QString name;
-        name=ui->listWidget->currentItem()->text();
-        QSqlQuery query;
-        if(sub_time_loop==1)
-            query.prepare("select wait1,mix1,mag1 FROM DNA where name=:name");
-        else if(sub_time_loop==2)
-            query.prepare("select wait2,mix2,mag2 FROM DNA where name=:name");
-        else if(sub_time_loop==3)
-            query.prepare("select wait3,mix3,mag3 FROM DNA where name=:name");
-        else if(sub_time_loop==4)
-            query.prepare("select wait4,mix4,mag4 FROM DNA where name=:name");
-        else if(sub_time_loop==5)
-            query.prepare("select wait5,mix5,mag5 FROM DNA where name=:name");
-        else if(sub_time_loop==7)
-            query.prepare("select wait6,mix6,mag7 FROM DNA where name=:name");
-        else if(sub_time_loop==7)
-            query.prepare("select wait7,mix7,mag7 FROM DNA where name=:name");
-        query.bindValue(":name",name);
-        query.exec();
-        while(query.next())
+        ui->stackedWidget->setCurrentIndex(3);
+        timer_val=1;
+        if(array[0][0]=='P')
         {
-            ui->lineEdit_146->setText(query.value(0).toString());
-            ui->lineEdit_147->setText(query.value(1).toString());
-            ui->lineEdit_148->setText(query.value(2).toString());
+            array[0].remove(0,1);
+            ui->label_14->setText(array[0]);
+            QString name;
+            name=ui->listWidget->currentItem()->text();
+            QSqlQuery query;
+            if(sub_time_loop==1)
+                query.prepare("select wait1,mix1,mag1 FROM DNA where name=:name");
+            else if(sub_time_loop==2)
+                query.prepare("select wait2,mix2,mag2 FROM DNA where name=:name");
+            else if(sub_time_loop==3)
+                query.prepare("select wait3,mix3,mag3 FROM DNA where name=:name");
+            else if(sub_time_loop==4)
+                query.prepare("select wait4,mix4,mag4 FROM DNA where name=:name");
+            else if(sub_time_loop==5)
+                query.prepare("select wait5,mix5,mag5 FROM DNA where name=:name");
+            else if(sub_time_loop==7)
+                query.prepare("select wait6,mix6,mag7 FROM DNA where name=:name");
+            else if(sub_time_loop==7)
+                query.prepare("select wait7,mix7,mag7 FROM DNA where name=:name");
+            query.bindValue(":name",name);
+            query.exec();
+            while(query.next())
+            {
+                ui->lineEdit_146->setText(query.value(0).toString());
+                ui->lineEdit_147->setText(query.value(1).toString());
+                ui->lineEdit_148->setText(query.value(2).toString());
+            }
+            sub_time_loop=sub_time_loop+1;
+            for(int i=0;i<array_len;i++)
+            {
+                array[i]=array[i+1];
+            }
+            array[array_len]='\0';
+            array_len=array_len-1;
+            //processing();
+            into_pname=1;
+
         }
-        sub_time_loop=sub_time_loop+1;
-        for(int i=0;i<array_len;i++)
+
+        else if(array[0][0]=='W')
         {
-            array[i]=array[i+1];
-        }
-        array[array_len]='\0';
-        array_len=array_len-1;
-        //processing();
-        into_pname=1;
-
-    }
-
-    else if(array[0][0]=='W')
-    {
-        Pi2c arduino(8);
-        char* ch;
-        QByteArray ba=array[0].toLatin1();
-        ch=ba.data();
-        //timer1->stop();
-        QThread::msleep(100);
-        arduino.i2cWrite(ch,30);
-        QThread::msleep(100);
-        //timer1->start(1000);
-        qDebug()<<array[0];
-        for(int i=0;i<array_len;i++)
-        {
-            array[i]=array[i+1];
-        }
-        array[array_len]='\0';
-        array_len=array_len-1;
-        into_pname=1;
-    }
-
-    else
-    {
-        Pi2c arduino(7);
-        char* ch;
-        QByteArray ba=array[0].toLatin1();
-        ch=ba.data();
-        //timer1->stop();
-        QThread::msleep(100);
-        arduino.i2cWrite(ch,30);
-        QThread::msleep(100);
-        char rc[30];
-        arduino.i2cRead(rc,30);
-        qDebug()<<"sent="<<ch<<" received="<<rc;
-        QString str1=ch;
-        QString str2=rc;
-        qDebug()<<str1<<str2;
-
-        while(str1!=str2)
-        {
-            qDebug()<<"Command Mis Matched";
+            Pi2c arduino(8);
+            char* ch;
+            QByteArray ba=array[0].toLatin1();
+            ch=ba.data();
+            //timer1->stop();
             QThread::msleep(100);
             arduino.i2cWrite(ch,30);
             QThread::msleep(100);
-            arduino.i2cRead(rc,30);
-            QThread::msleep(100);
-            str1=ch;
-            str2=rc;
-            qDebug()<<str1<<str2;
+            //timer1->start(1000);
+            qDebug()<<array[0];
+            for(int i=0;i<array_len;i++)
+            {
+                array[i]=array[i+1];
+            }
+            array[array_len]='\0';
+            array_len=array_len-1;
+            into_pname=1;
         }
 
-
-        qDebug()<<array[0];
-
-        //timer val
-        if(array[0].left(3)=="idl" || array[0].left(3)== "mix" || array[0].left(3)== "mis")
-        {
-            //timer_val=array[0].mid(4,4).toInt();
-            QStringList elements = array[0].split(' ');
-            //qDebug()<<elements[0]<<" "<<elements[1];
-            timer_val=elements[1].toInt();
-        }
         else
         {
-            timer_val=1;
-        }
+            Pi2c arduino(7);
+            char* ch;
+            QByteArray ba=array[0].toLatin1();
+            ch=ba.data();
+            //timer1->stop();
+            QThread::msleep(100);
+            arduino.i2cWrite(ch,30);
+            QThread::msleep(100);
+            char rc[30];
+            arduino.i2cRead(rc,30);
+            qDebug()<<"sent="<<ch<<" received="<<rc;
+            QString str1=ch;
+            QString str2=rc;
+            qDebug()<<str1<<str2;
 
-        for(int i=0;i<array_len;i++)
-        {
-            array[i]=array[i+1];
+            while(str1!=str2)
+            {
+                qDebug()<<"Command Mis Matched";
+                QThread::msleep(100);
+                arduino.i2cWrite(ch,30);
+                QThread::msleep(100);
+                arduino.i2cRead(rc,30);
+                QThread::msleep(100);
+                str1=ch;
+                str2=rc;
+                qDebug()<<str1<<str2;
+            }
+
+
+            qDebug()<<array[0];
+
+            //timer val
+            if(array[0].left(3)=="idl" || array[0].left(3)== "mix" || array[0].left(3)== "mis")
+            {
+                //timer_val=array[0].mid(4,4).toInt();
+                QStringList elements = array[0].split(' ');
+                //qDebug()<<elements[0]<<" "<<elements[1];
+                timer_val=elements[1].toInt();
+            }
+            else
+            {
+                timer_val=1;
+            }
+
+            for(int i=0;i<array_len;i++)
+            {
+                array[i]=array[i+1];
+            }
+            array[array_len]='\0';
+            array_len=array_len-1;
         }
-        array[array_len]='\0';
-        array_len=array_len-1;
+        //qDebug()<<array_len;
+        //qDebug()<<timer_val;
+        if(array_len>=0)
+        {
+            timer->start(timer_val*1000);
+            //qDebug()<<timer_val*10;
+        }
     }
-    //qDebug()<<array_len;
-    //qDebug()<<timer_val;
-    if(array_len>=0)
+    else
     {
-        timer->start(timer_val*1000);
-        //qDebug()<<timer_val*10;
+        ui->stackedWidget->setCurrentIndex(7);
     }
 }
 
@@ -2247,11 +2275,69 @@ void MainWindow::testing()
         else
         {
             timer->start(500);
-        }        
+        }
         QThread::msleep(500);
     }
 }
 
+void MainWindow::init_motor()
+{
+    timer2->stop();
+    Pi2c arduino(7);
+    char receive[30];
+    QThread::msleep(100);
+    arduino.i2cRead(receive,30);
+    QThread::msleep(100);
+    qDebug()<<receive;
+    if(strncmp(receive,"done",4)==0)
+    {
+        ui->label_93->setVisible(true);
+        ui->label_94->setVisible(true);
+        ui->label_95->hide();
+        ui->toolButton_45->hide();
+
+        QString data="ini";
+        char* ch;
+        QByteArray ba=data.toLatin1();
+        ch=ba.data();
+        QThread::msleep(100);
+        arduino.i2cWrite(ch,30);
+        QThread::msleep(100);
+
+        timer3->start(1000);
+
+
+    }
+
+
+}
+
+
 //create a pause button
 //while resume check the sensor status
 //when door open this button goes to pause and need to resume through the button
+
+void MainWindow::on_toolButton_45_clicked()
+{
+    init_motor();
+}
+
+void MainWindow::init()
+{
+    Pi2c arduino(7);
+    char receive[30];
+    QThread::msleep(100);
+    arduino.i2cRead(receive,30);
+    QThread::msleep(100);
+    if(strncmp(receive,"done",4)==0)
+    {
+        timer3->stop();
+        ui->stackedWidget->setCurrentIndex(0);
+    }
+
+}
+
+void MainWindow::on_toolButton_46_clicked()
+{
+    processing();
+}
